@@ -2,6 +2,8 @@
 
 PalaMarket es una tienda y catálogo interactivo de palas de pádel desarrollado como proyecto final del Máster Full Stack. La aplicación permite explorar una selección de modelos, combinar filtros, consultar fichas detalladas y simular una experiencia de compra completa sin backend ni pagos reales.
 
+**Aplicación desplegada:** [https://palamarket.vercel.app](https://palamarket.vercel.app)
+
 ## Objetivo
 
 El proyecto reúne en una única aplicación frontend los conceptos trabajados durante el máster: HTML semántico, CSS responsive, JavaScript moderno, componentización, gestión de estado, persistencia local y despliegue. Los datos de partida se han adaptado de `ProyectoPalas`, mientras que la organización de catálogo, favoritos y detalle toma como referencia patrones aprendidos en `Pokemon-kanto`.
@@ -34,7 +36,7 @@ El proyecto reúne en una única aplicación frontend los conceptos trabajados d
 - SweetAlert2
 - localStorage
 - ESLint
-- Netlify
+- Vercel
 
 No se utiliza React, Redux ni backend. Las ilustraciones de producto están construidas con CSS para evitar dependencias de imágenes remotas.
 
@@ -118,13 +120,14 @@ El proceso de compra no procesa pagos ni transmite datos. El formulario de conta
 
 ## Despliegue
 
-El proyecto está preparado para Netlify mediante `netlify.toml`:
+El proyecto está desplegado en Vercel y preparado mediante `vercel.json`:
 
+- framework: Vite;
 - comando de build: `npm run build`;
 - directorio de publicación: `dist`;
-- redirección SPA a `index.html`.
+- reescritura de respaldo a `index.html`.
 
-La carpeta local `.netlify` está excluida de Git y no se requiere ninguna variable de entorno.
+La carpeta local `.vercel` está excluida de Git y no se requiere ninguna variable de entorno.
 
 ## Decisiones técnicas
 
