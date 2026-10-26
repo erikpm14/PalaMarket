@@ -1,0 +1,1 @@
+export const EmptyState = ({ title, text, action = '', href = '#/catalogo' }) => `<div class="empty-state"><div class="empty-state__mark">PM</div><h2>${title}</h2><p>${text}</p>${action ? `<a class="button" href="${href}">${action}</a>` : ''}</div>`;

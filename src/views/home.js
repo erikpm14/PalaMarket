@@ -1,0 +1,15 @@
+import { products } from '../data/products.js';
+import { ProductGrid } from '../components/products/ProductGrid.js';
+import { ProductVisual } from '../components/products/ProductVisual.js';
+import { icon } from '../components/ui/icons.js';
+
+export const homeView = () => {
+  const heroProduct = products[6];
+  return `<main id="main-content">
+    <section class="hero"><div class="container hero-grid"><div class="hero-copy"><p class="eyebrow eyebrow--accent">Tu juego empieza aquí</p><h1>La pala correcta cambia <em>el punto.</em></h1><p class="hero-lead">Compara sensaciones, formas y niveles sin complicarte. Una selección pensada para ayudarte a elegir mejor.</p><div class="hero-actions"><a class="button" href="#/catalogo">Explorar catálogo ${icon('arrow')}</a><a class="button button--secondary" href="#/catalogo?ofertas=1">Ver ofertas</a></div><div class="hero-proof"><div><strong>18</strong><span>palas seleccionadas</span></div><div><strong>6</strong><span>marcas reconocidas</span></div><div><strong>100%</strong><span>comparación sencilla</span></div></div></div>
+    <div class="hero-showcase"><div class="hero-orbit hero-orbit--one"></div><div class="hero-orbit hero-orbit--two"></div>${ProductVisual(heroProduct, 'product-visual--hero')}<div class="hero-product-label"><span>Favorita del equipo</span><strong>${heroProduct.name}</strong><small>${heroProduct.price} €</small></div></div></div></section>
+    <section class="section"><div class="container"><div class="section-heading"><div><p class="eyebrow">Selección PalaMarket</p><h2>Palas que merece la pena conocer</h2></div><a class="text-link" href="#/catalogo">Ver todo ${icon('arrow')}</a></div>${ProductGrid(products.filter((product) => product.featured).slice(0, 4))}</div></section>
+    <section class="section section--dark"><div class="container"><div class="section-heading section-heading--light"><div><p class="eyebrow">Elige con criterio</p><h2>Tres claves. Una decisión mejor.</h2></div></div><div class="benefit-grid"><article><span>01</span><h3>Forma</h3><p>Redonda para control, lágrima para equilibrio y diamante para potencia.</p></article><article><span>02</span><h3>Nivel</h3><p>Una pala adecuada acompaña tu técnica; no necesitas la más exigente para jugar mejor.</p></article><article><span>03</span><h3>Sensaciones</h3><p>Peso, material y balance definen cómo responde la pala en defensa y ataque.</p></article></div></div></section>
+    <section class="section guide-section"><div class="container guide-grid"><div><p class="eyebrow">Guía rápida</p><h2>¿No sabes por dónde empezar?</h2><p>Filtra por tu nivel y forma preferida. Después compara peso, materiales y valoración en la ficha de cada pala.</p><a class="button" href="#/catalogo">Encontrar mi pala ${icon('arrow')}</a></div><div class="shape-diagram"><div class="shape shape--round"><span>Control</span></div><div class="shape shape--drop"><span>Equilibrio</span></div><div class="shape shape--diamond"><span>Potencia</span></div></div></div></section>
+  </main>`;
+};
