@@ -11,7 +11,7 @@ El proyecto reúne en una única aplicación frontend los conceptos trabajados d
 ## Funcionalidades
 
 - Inicio con presentación, selección destacada y guía visual sobre formas de pala.
-- Catálogo local de 18 palas de marcas reconocidas.
+- Catálogo local de 9 palas reales de Adidas, Babolat, Bullpadel, Head, Nox y StarVie.
 - Búsqueda por nombre o marca.
 - Filtros combinables por marca, forma, nivel y rango de precio.
 - Ordenación por precio, nombre y valoración.
@@ -38,7 +38,7 @@ El proyecto reúne en una única aplicación frontend los conceptos trabajados d
 - ESLint
 - Vercel
 
-No se utiliza React, Redux ni backend. Las ilustraciones de producto están construidas con CSS para evitar dependencias de imágenes remotas.
+No se utiliza React, Redux ni backend. Las fichas muestran fotografías de producto enlazadas desde catálogos oficiales y distribuidores, con fallback CSS preparado para futuras referencias.
 
 ## Estructura
 
@@ -135,7 +135,7 @@ La carpeta local `.vercel` está excluida de Git y no se requiere ninguna variab
 - **Hash router:** permite rutas propias para el detalle sin depender de configuración de servidor durante el desarrollo.
 - **Estado observable centralizado:** `appState.js` coordina carrito, favoritos, usuario y tema, y notifica a la interfaz después de cada cambio.
 - **Datos locales separados:** el catálogo y las tiendas viven en módulos independientes y pueden sustituirse por una API en el futuro.
-- **Ilustraciones CSS:** garantizan una identidad coherente, carga rápida y ausencia de recursos externos rotos.
+- **Fotografías de producto:** el catálogo usa imágenes reales de las páginas de Adidas, Head, StarVie, Babolat, NOX y Paleteros.es; se mantienen las fuentes en los datos para documentar su procedencia.
 - **Diseño accesible:** landmarks semánticos, etiquetas visibles, navegación por teclado, foco perceptible, botones con nombre accesible y respeto por `prefers-reduced-motion`.
 
 ## Mejoras futuras
@@ -150,3 +150,8 @@ La carpeta local `.vercel` está excluida de Git y no se requiere ninguna variab
 ## Autor
 
 Erik Portillo Modrego
+
+
+## Fuentes de imágenes
+
+Las fotografías se utilizan únicamente para presentar modelos reales en este proyecto académico sin venta ni uso comercial. Proceden de las páginas de producto de [Adidas](https://www.adidas.es/pala-de-padel-metalbone-2026/KL2612.html), [Head](https://www.head.com/es_ES/product/extreme-pro-2025-223125), [StarVie](https://starvie.com/products/pala-metheora), [Babolat](https://www.babolat.com/es/padel-technical-collection-2026.html), [NOX](https://noxsport.com/products/pala-at10-genius-18k-alum-2026-by-agustin-tapia) y [Paleteros.es](https://paleteros.es/padel/pala-bullpadel-hack-03-2024/).
