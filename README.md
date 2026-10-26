@@ -1,6 +1,6 @@
 # PalaMarket
 
-PalaMarket es una tienda y catálogo interactivo de palas de pádel desarrollado como proyecto final del Máster Full Stack. La aplicación permite explorar una selección de modelos, combinar filtros, consultar fichas detalladas y simular una experiencia de compra completa sin backend ni pagos reales.
+PalaMarket es una tienda y catálogo interactivo de palas de pádel desarrollado como proyecto final del Máster Full Stack. La aplicación permite explorar una selección de modelos, combinar filtros por marca, forma, nivel, tipo de juego y precio, consultar fichas detalladas y simular una experiencia de compra completa sin backend ni pagos reales.
 
 **Aplicación desplegada:** [https://palamarket.vercel.app](https://palamarket.vercel.app)
 
@@ -11,7 +11,7 @@ El proyecto reúne en una única aplicación frontend los conceptos trabajados d
 ## Funcionalidades
 
 - Inicio con presentación, selección destacada y guía visual sobre formas de pala.
-- Catálogo local de 9 palas reales de Adidas, Babolat, Bullpadel, Head, Nox y StarVie.
+- Catálogo local de 30 palas reales de Adidas, Babolat, Bullpadel, Head, Nox y StarVie.
 - Búsqueda por nombre o marca.
 - Filtros combinables por marca, forma, nivel y rango de precio.
 - Ordenación por precio, nombre y valoración.
