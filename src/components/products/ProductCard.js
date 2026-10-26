@@ -15,7 +15,7 @@ export const ProductCard = (product) => {
     <div class="product-card__body">
       <p class="eyebrow">${product.brand} · ${product.shape}</p>
       <h3><a href="#/producto/${product.id}">${product.name}</a></h3>
-      <div class="product-meta"><span>${product.level}</span><span aria-label="Valoración ${product.rating} de 5">★ ${product.rating.toFixed(1)}</span></div>
+      <div class="product-meta"><span>${product.level} · ${product.gameType || 'equilibrio'}</span><span aria-label="Valoración ${product.rating} de 5">★ ${product.rating.toFixed(1)}</span></div>
       <div class="product-card__footer"><div class="price-block">${product.offer ? `<del class="price-old">${euro.format(product.oldPrice)}</del>` : ''}<strong>${euro.format(product.price)}</strong></div><button class="button button--small" data-add-cart="${product.id}" ${product.stock === 0 ? 'disabled' : ''}>${product.stock === 0 ? 'Sin stock' : 'Añadir'}</button></div>
     </div>
   </article>`;
