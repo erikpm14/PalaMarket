@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
+import { User } from '../src/models/User.js';
 import { loggedClient, startTestApp } from './helpers.js';
 
 let ctx;
@@ -60,7 +61,7 @@ describe('carrito', () => {
     assert.deepEqual((await client.get('/api/cart')).body.cart, []);
   });
 
-  it('fusiona el carrito anónimo sumando cantidades hasta el stock y vacía el carrito', async () => {
+  it('fusiona el carrito anónimo conservando la mayor cantidad (hasta el stock) y se puede vaciar', async () => {
     const { client } = await loggedClient(ctx);
     await client.put('/api/cart/coello-pro').send({ quantity: 1 });
     const res = await client.post('/api/cart/merge').send({ items: [{ productId: 'coello-pro', quantity: 5 }, { productId: 'air-viper-26', quantity: 2 }, { productId: 'x', quantity: 1 }] });
@@ -120,6 +121,38 @@ describe('carrito: concurrencia e idempotencia', () => {
     ]);
     assert.deepEqual(byId((await client.get('/api/cart')).body.cart), { 'air-viper-26': 2, 'air-veron-26': 3, 'air-vertuo-26': 1 });
     assert.deepEqual((await client.get('/api/favorites')).body.favorites, ['coello-pro']);
+  });
+});
+
+describe('carrito: fusiones simultáneas y carrito lleno', () => {
+  it('dos fusiones simultáneas de la misma pala convergen siempre a la mayor cantidad', async () => {
+    for (let round = 0; round < 5; round += 1) {
+      const { client } = await loggedClient(ctx);
+      const quantities = [1, 5, 2, 4, 3, 5, 1];
+      const results = await Promise.all(quantities.map((quantity) => client.post('/api/cart/merge').send({ items: [{ productId: 'air-viper-26', quantity }] })));
+      assert.ok(results.every((r) => r.status === 200), JSON.stringify(results.map((r) => r.status)));
+      assert.deepEqual((await client.get('/api/cart')).body.cart, [{ productId: 'air-viper-26', quantity: 4 }], `ronda ${round}`); // stock de air-viper-26 = 4
+    }
+  });
+
+  it('con el carrito lleno avisa de las líneas que no caben en lugar de aceptarlas en silencio', async () => {
+    const { client, id } = await loggedClient(ctx);
+    const lines = Array.from({ length: 100 }, (_, i) => ({ productId: `heredada-${i}`, quantity: 1 }));
+    await User.updateOne({ _id: id }, { $set: { cart: lines } });
+
+    const merge = await client.post('/api/cart/merge').send({ items: [{ productId: 'coello-pro', quantity: 1 }] });
+    assert.equal(merge.status, 422);
+    assert.equal(merge.body.error.code, 'CART_FULL');
+    assert.deepEqual(merge.body.error.details.map((d) => d.field), ['coello-pro']);
+
+    const put = await client.put('/api/cart/coello-pro').send({ quantity: 1 });
+    assert.equal(put.status, 422);
+    assert.equal(put.body.error.code, 'CART_FULL');
+
+    // Una línea que ya existe sí se puede modificar aunque el carrito esté lleno.
+    await User.updateOne({ _id: id }, { $set: { 'cart.0.productId': 'air-viper-26' } });
+    assert.equal((await client.put('/api/cart/air-viper-26').send({ quantity: 2 })).status, 200);
+    assert.equal((await client.get('/api/cart')).body.cart.length, 100);
   });
 });
 

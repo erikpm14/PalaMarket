@@ -7,12 +7,12 @@ mongoose.set('strictQuery', true);
 let connection = null;
 
 const DISCONNECTED = 0;
-const DISCONNECTING = 3;
 
 /** Conexión reutilizable: en serverless cada invocación comparte la misma promesa. */
 export const connectDb = (uri, timeoutMs = 8000) => {
   // Una instancia reanudada tras estar inactiva puede conservar una promesa ya resuelta de una conexión cerrada.
-  if (connection && [DISCONNECTED, DISCONNECTING].includes(mongoose.connection.readyState)) connection = null;
+  // Durante un cierre en curso (estado «disconnecting») no se abre otra: se espera a que termine.
+  if (connection && mongoose.connection.readyState === DISCONNECTED) connection = null;
   if (!connection) {
     connection = mongoose.connect(uri, { serverSelectionTimeoutMS: timeoutMs, maxPoolSize: 5 }).catch((error) => {
       connection = null;

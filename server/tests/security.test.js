@@ -90,6 +90,8 @@ describe('configuración', () => {
     assert.throws(() => loadConfig({ ...ok, CORS_ORIGINS: '' }), /CORS_ORIGINS/);
     assert.throws(() => loadConfig({ ...ok, MONGODB_URI: '' }), /MONGODB_URI/);
     assert.throws(() => loadConfig({ ...ok, COOKIE_SAME_SITE: 'cualquiera' }), /COOKIE_SAME_SITE/);
+    assert.throws(() => loadConfig({ ...ok, JWT_EXPIRES_IN: 'mucho' }), /JWT_EXPIRES_IN/);
+    assert.doesNotThrow(() => loadConfig({ ...ok, JWT_EXPIRES_IN: '12h' }));
   });
 
   it('en producción la cookie es Secure y la API nunca queda abierta a cualquier origen', () => {

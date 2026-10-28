@@ -19,6 +19,9 @@ export const loadConfig = (env = process.env) => {
   const origins = list(env.CORS_ORIGINS);
   if (isProduction && origins.length === 0) throw new Error('CORS_ORIGINS es obligatorio en producción (dominio real de la web).');
 
+  const jwtExpiresIn = env.JWT_EXPIRES_IN ?? '7d';
+  if (!/^\d+[smhd]?$/.test(jwtExpiresIn)) throw new Error('JWT_EXPIRES_IN debe ser un número seguido de s, m, h o d (por ejemplo 7d).');
+
   const sameSite = (env.COOKIE_SAME_SITE ?? 'lax').toLowerCase();
   if (!SAME_SITE_VALUES.includes(sameSite)) throw new Error('COOKIE_SAME_SITE debe ser lax, strict o none.');
 
@@ -29,7 +32,7 @@ export const loadConfig = (env = process.env) => {
     mongoUri,
     jwtSecret,
     dbTimeoutMs: Number(env.DB_TIMEOUT_MS ?? 8000),
-    jwtExpiresIn: env.JWT_EXPIRES_IN ?? '7d',
+    jwtExpiresIn,
     corsOrigins: origins.length ? origins : DEV_ORIGINS,
     cookie: {
       name: 'pm_session',

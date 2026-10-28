@@ -44,17 +44,27 @@ const setLine = async (userId, productId, amount) => {
   return pushed.matchedCount > 0;
 };
 
-/** Sube la cantidad de una línea hasta `amount` si es menor (nunca la reduce): idempotente. */
+/**
+ * Sube la cantidad de una línea hasta `amount` si es menor (nunca la reduce): idempotente.
+ * Devuelve false solo si la línea no existe y no cabe (carrito lleno).
+ */
 const raiseLine = async (userId, productId, amount) => {
-  const raised = await User.updateOne(
-    { _id: userId, cart: trusted({ $elemMatch: { productId, quantity: { $lt: amount } } }) },
-    { $set: { 'cart.$.quantity': amount } },
-  );
-  if (raised.matchedCount) return;
-  await User.updateOne(
-    { _id: userId, 'cart.productId': trusted({ $ne: productId }), [`cart.${MAX_LINES - 1}`]: trusted({ $exists: false }) },
-    { $push: { cart: { productId, quantity: amount } } },
-  );
+  // Hasta dos vueltas: si otra fusión simultánea inserta la línea entre medias, la segunda vuelta
+  // ya la encuentra y la sube, de modo que el resultado converge siempre al máximo.
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const raised = await User.updateOne(
+      { _id: userId, cart: trusted({ $elemMatch: { productId, quantity: { $lt: amount } } }) },
+      { $set: { 'cart.$.quantity': amount } },
+    );
+    if (raised.matchedCount) return true;
+    const pushed = await User.updateOne(
+      { _id: userId, 'cart.productId': trusted({ $ne: productId }), [`cart.${MAX_LINES - 1}`]: trusted({ $exists: false }) },
+      { $push: { cart: { productId, quantity: amount } } },
+    );
+    if (pushed.matchedCount) return true;
+  }
+  // Ni se pudo subir ni insertar: o ya hay una línea con cantidad suficiente, o el carrito está lleno.
+  return (await User.exists({ _id: userId, 'cart.productId': productId })) !== null;
 };
 
 // Todas las operaciones se aplican sobre req.user._id: el carrito de otra persona es inaccesible.
@@ -102,7 +112,12 @@ export const cartController = {
       const amount = Math.min(item.quantity, stockOf(item.productId), MAX_QUANTITY);
       if (amount > 0) wanted.set(item.productId, Math.max(wanted.get(item.productId) ?? 0, amount));
     }
-    for (const [productId, amount] of wanted) await raiseLine(req.user._id, productId, amount);
+    const rejected = [];
+    for (const [productId, amount] of wanted) {
+      if (!(await raiseLine(req.user._id, productId, amount))) rejected.push(productId);
+    }
+    // Si alguna línea no cupo se avisa: el cliente solo borra su copia local cuando todo se aceptó.
+    if (rejected.length) throw new AppError(422, 'CART_FULL', 'El carrito no admite más productos distintos.', rejected.map((id) => ({ field: id, message: 'No cabe en el carrito.' })));
     res.json(await readCart(req.user._id));
   },
 };
