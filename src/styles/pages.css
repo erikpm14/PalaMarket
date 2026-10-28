@@ -383,6 +383,12 @@
   margin-inline: auto;
 }
 
+.auth-card,
+.page-hero h1 {
+  /* Nombres y emails largos nunca deben desbordar la tarjeta. */
+  overflow-wrap: anywhere;
+}
+
 .auth-card h1 {
   font-size: clamp(2.5rem, 6vw, 3.5rem);
 }
@@ -408,6 +414,35 @@
   font-size: 2rem;
   font-weight: 800;
   transform: rotate(-8deg);
+}
+
+.auth-tabs {
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-2);
+}
+
+.auth-tabs a {
+  display: flex;
+  min-height: 44px;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-pill);
+  color: var(--color-muted);
+  font-weight: 700;
+  transition: background var(--transition), color var(--transition);
+}
+
+.auth-tabs a:hover {
+  color: var(--color-text);
+}
+
+.auth-tabs a[aria-current="page"] {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
 }
 
 .auth-actions {

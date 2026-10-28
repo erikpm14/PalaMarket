@@ -10,6 +10,7 @@ import { appState } from './state/appState.js';
 import { markBrokenImage } from './components/products/ProductVisual.js';
 import { Header } from './components/layout/Header.js';
 import { Footer } from './components/layout/Footer.js';
+import { ServiceBanner } from './components/layout/ServiceBanner.js';
 import { CartDrawer, cartLines, cartTotals } from './components/cart/CartDrawer.js';
 import { homeView } from './views/home.js';
 import { catalogView, bindCatalog } from './views/catalog.js';
@@ -57,6 +58,20 @@ const updateDocumentTitle = (path) => {
   document.title = section ? `${section} · PalaMarket` : 'PalaMarket · Encuentra tu próxima pala';
 };
 
+/** Guarda lo escrito en los formularios para no perderlo si la interfaz se repinta mientras se rellenan. */
+const captureFormValues = () => Object.fromEntries(
+  [...document.querySelectorAll('[data-preserve] input, [data-preserve] select, [data-preserve] textarea')]
+    .filter((field) => field.id)
+    .map((field) => [field.id, field.value]),
+);
+
+const restoreFormValues = (values) => {
+  Object.entries(values).forEach(([id, value]) => {
+    const field = document.getElementById(id);
+    if (field && !field.value) field.value = value;
+  });
+};
+
 const render = () => {
   const { path } = router.current();
   const state = appState.get();
@@ -68,10 +83,12 @@ const render = () => {
   }
   const justOpened = state.cartOpen && !cartWasOpen;
   const refocus = pathChanged ? null : focusSelector();
+  const formValues = pathChanged ? {} : captureFormValues();
   if (pathChanged) menuOpen = false;
 
   document.documentElement.dataset.theme = state.theme;
-  app.innerHTML = `${Header(state, path, menuOpen)}${resolveView(path)}${Footer()}${CartDrawer(state, justOpened)}`;
+  app.innerHTML = `${Header(state, path, menuOpen)}${ServiceBanner(state)}${resolveView(path)}${Footer()}${CartDrawer(state, justOpened)}`;
+  restoreFormValues(formValues);
 
   // Con el carrito abierto, el resto de la página queda inerte para teclado y lectores de pantalla.
   app.querySelectorAll(':scope > :not(.cart-drawer):not(.drawer-backdrop)').forEach((element) => {
@@ -128,6 +145,7 @@ const checkout = async () => {
 
 const actions = {
   'toggle-theme': () => appState.toggleTheme(),
+  'retry-session': () => appState.retry(),
   'toggle-menu': () => { menuOpen = !menuOpen; render(); },
   'open-cart': () => appState.toggleCart(true),
   'close-cart': () => appState.toggleCart(false),
@@ -158,4 +176,15 @@ document.addEventListener('keydown', (event) => {
 });
 
 appState.subscribe(render);
+appState.onNotice((message) => Swal.fire({
+  toast: true,
+  position: 'bottom',
+  icon: 'error',
+  title: message,
+  showConfirmButton: false,
+  timer: 6000,
+  timerProgressBar: true,
+  customClass: { popup: 'pm-swal' },
+}));
 router.start(render);
+appState.init();

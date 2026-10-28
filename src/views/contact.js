@@ -8,7 +8,7 @@ export const contactView = () => `<main id="main-content"><section class="sectio
     <p>Cuéntanos qué buscas y te orientaremos. Este formulario es una simulación y no envía información.</p>
     <aside class="contact-tip"><strong>Un consejo</strong><span>Indica tu nivel, tu posición habitual y qué sensación buscas para recibir una recomendación más útil.</span></aside>
   </div>
-  <form class="contact-form" id="contact-form" novalidate>
+  <form class="contact-form" id="contact-form" data-preserve novalidate>
     <div class="form-row">
       <div class="field"><label for="contact-name">Nombre</label><input id="contact-name" name="name" autocomplete="name" required aria-describedby="contact-name-error"><span class="field-error" id="contact-name-error" role="alert"></span></div>
       <div class="field"><label for="contact-email">Email</label><input id="contact-email" name="email" type="email" autocomplete="email" required aria-describedby="contact-email-error"><span class="field-error" id="contact-email-error" role="alert"></span></div>
