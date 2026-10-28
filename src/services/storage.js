@@ -16,7 +16,4 @@ export const storage = {
       // La aplicación sigue funcionando si el navegador bloquea el almacenamiento.
     }
   },
-  remove(key) {
-    localStorage.removeItem(`${PREFIX}${key}`);
-  },
 };

@@ -1,7 +1,81 @@
+/* Tokens de diseño: color, tipografía, espaciado, radios y sombras. */
 :root {
-  --color-bg: #f7f4ec; --color-surface: #fffdf8; --color-surface-2: #eeeae0; --color-text: #15352d; --color-muted: #61736e;
-  --color-primary: #173f35; --color-primary-strong: #0f2d26; --color-accent: #c9f25f; --color-warm: #f3a33c; --color-border: #d9ddd4; --color-danger: #b7443e;
-  --shadow-sm: 0 8px 24px rgba(20, 55, 46, .08); --shadow-lg: 0 28px 70px rgba(15, 45, 38, .18);
-  --radius-sm: .7rem; --radius-md: 1.2rem; --radius-lg: 2rem; --container: 1240px; --header-height: 76px;
+  /* Color · tema claro */
+  --color-bg: #f4f7f1;
+  --color-surface: #ffffff;
+  --color-surface-2: #e8f0e2;
+  --color-text: #10281f;
+  --color-muted: #4a6358;
+  --color-border: #d8e3d2;
+  --color-primary: #0b5d45;
+  --color-primary-strong: #084634;
+  --color-on-primary: #ffffff;
+  --color-accent: #c6f432;
+  --color-on-accent: #10281f;
+  --color-offer: #c8341f;
+  --color-on-offer: #ffffff;
+  --color-danger: #b3261e;
+  --color-success: #1d7a4d;
+  --color-warning: #8a5a00;
+  --color-focus: #1b62d9;
+  --color-hero: #0b5d45;
+  --color-footer: #0c3a2d;
+
+  /* Escenario de las ilustraciones: siempre claro para que la pala destaque */
+  --stage-from: #f6fcdf;
+  --stage-to: #d6efc3;
+
+  /* Tipografía */
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Barlow Condensed", Inter, ui-sans-serif, system-ui, sans-serif;
+  --text-xs: 0.8125rem;
+  --text-sm: 0.9375rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+
+  /* Espaciado (escala de 4 px) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4.5rem;
+  --space-9: 6rem;
+
+  /* Forma y elevación */
+  --radius-sm: 0.625rem;
+  --radius-md: 1rem;
+  --radius-lg: 1.75rem;
+  --radius-pill: 999px;
+  --shadow-sm: 0 1px 2px rgba(16, 40, 31, 0.06), 0 6px 16px rgba(16, 40, 31, 0.06);
+  --shadow-lg: 0 2px 4px rgba(16, 40, 31, 0.06), 0 22px 48px rgba(16, 40, 31, 0.16);
+
+  --container: 1240px;
+  --header-height: 68px;
+  --transition: 0.18s ease;
 }
-[data-theme="dark"] { --color-bg: #0e1916; --color-surface: #14241f; --color-surface-2: #1b2d27; --color-text: #f1f5ec; --color-muted: #afbeb8; --color-primary: #c9f25f; --color-primary-strong: #ddff8a; --color-accent: #c9f25f; --color-border: #30443d; --shadow-sm: 0 8px 24px rgba(0,0,0,.18); --shadow-lg: 0 28px 70px rgba(0,0,0,.35); }
+
+[data-theme="dark"] {
+  --color-bg: #131f1b;
+  --color-surface: #1c2c26;
+  --color-surface-2: #243830;
+  --color-text: #eef5ec;
+  --color-muted: #b7c8be;
+  --color-border: #35493f;
+  --color-primary: #c6f432;
+  --color-primary-strong: #d9ff62;
+  --color-on-primary: #10281f;
+  --color-offer: #ff8a73;
+  --color-on-offer: #2a0c07;
+  --color-danger: #ff9a92;
+  --color-success: #7fdc9f;
+  --color-warning: #f0c36a;
+  --color-focus: #8cb8ff;
+  --color-hero: #1d4b3c;
+  --color-footer: #0f1b17;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2), 0 6px 16px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 2px 4px rgba(0, 0, 0, 0.25), 0 22px 48px rgba(0, 0, 0, 0.4);
+}

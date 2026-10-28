@@ -4,12 +4,13 @@ import './styles/reset.css';
 import './styles/global.css';
 import './styles/layout.css';
 import './styles/components.css';
+import './styles/pages.css';
 import { router } from './router.js';
 import { appState } from './state/appState.js';
-import { products } from './data/products.js';
+import { markBrokenImage } from './components/products/ProductVisual.js';
 import { Header } from './components/layout/Header.js';
 import { Footer } from './components/layout/Footer.js';
-import { CartDrawer } from './components/cart/CartDrawer.js';
+import { CartDrawer, cartLines, cartTotals } from './components/cart/CartDrawer.js';
 import { homeView } from './views/home.js';
 import { catalogView, bindCatalog } from './views/catalog.js';
 import { productView } from './views/product.js';
@@ -17,40 +18,144 @@ import { favoritesView } from './views/favorites.js';
 import { storesView } from './views/stores.js';
 import { contactView, bindContact } from './views/contact.js';
 import { loginView, bindLogin } from './views/login.js';
+import { notFoundView } from './views/notFound.js';
 
 const app = document.querySelector('#app');
-const views = { '/': homeView, '/catalogo': catalogView, '/favoritos': favoritesView, '/tiendas': storesView, '/contacto': contactView, '/login': loginView, '/perfil': loginView };
-let firstRender = true;
+const views = {
+  '/': homeView,
+  '/catalogo': catalogView,
+  '/favoritos': favoritesView,
+  '/tiendas': storesView,
+  '/contacto': contactView,
+  '/login': loginView,
+  '/perfil': loginView,
+};
+
+let lastPath = null;
+let cartWasOpen = false;
+let menuOpen = false;
+
+const resolveView = (path) => {
+  const product = path.match(/^\/producto\/(.+)$/);
+  if (product) return productView(decodeURIComponent(product[1]));
+  return (views[path] ?? notFoundView)();
+};
+
+/** Identifica el control con foco para devolvérselo tras volver a pintar. */
+const focusSelector = () => {
+  const active = document.activeElement;
+  if (!active || active === document.body) return null;
+  const { action, id } = active.dataset;
+  if (action && id) return `[data-action="${action}"][data-id="${id}"]`;
+  if (action) return `[data-action="${action}"]`;
+  return active.id ? `#${active.id}` : null;
+};
+
+const updateDocumentTitle = (path) => {
+  const titles = { '/catalogo': 'Catálogo', '/favoritos': 'Favoritos', '/tiendas': 'Tiendas', '/contacto': 'Contacto', '/login': 'Acceso', '/perfil': 'Mi perfil' };
+  const section = path.startsWith('/producto/') ? 'Ficha de pala' : titles[path];
+  document.title = section ? `${section} · PalaMarket` : 'PalaMarket · Encuentra tu próxima pala';
+};
 
 const render = () => {
-  const { path } = router.current(); const state = appState.get();
+  const { path } = router.current();
+  const state = appState.get();
+  const pathChanged = path !== lastPath;
+  if (pathChanged && state.cartOpen) {
+    // Al cambiar de página (enlace, atrás o URL directa) el carrito se cierra y se vuelve a pintar.
+    appState.toggleCart(false);
+    return;
+  }
+  const justOpened = state.cartOpen && !cartWasOpen;
+  const refocus = pathChanged ? null : focusSelector();
+  if (pathChanged) menuOpen = false;
+
   document.documentElement.dataset.theme = state.theme;
-  const productMatch = path.match(/^\/producto\/(.+)$/);
-  const view = productMatch ? productView(productMatch[1]) : (views[path] || (() => '<main id="main-content" class="section"><div class="container"><h1>Página no encontrada</h1><a href="#/">Volver al inicio</a></div></main>'))();
-  app.innerHTML = `${Header(state, path)}${view}${Footer()}${CartDrawer(state)}`;
-  bindGlobal(); bindCatalog(render); bindContact(() => Swal.fire({ icon: 'success', title: 'Consulta preparada', text: 'El envío ha sido simulado. No se ha compartido ningún dato.', confirmButtonText: 'Entendido' })); bindLogin(router.navigate);
-  if (!firstRender && !state.cartOpen) window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-  firstRender = false;
+  app.innerHTML = `${Header(state, path, menuOpen)}${resolveView(path)}${Footer()}${CartDrawer(state, justOpened)}`;
+
+  // Con el carrito abierto, el resto de la página queda inerte para teclado y lectores de pantalla.
+  app.querySelectorAll(':scope > :not(.cart-drawer):not(.drawer-backdrop)').forEach((element) => {
+    element.inert = state.cartOpen;
+  });
+
+  // Imágenes que ya fallaron antes de que existiera el listener (p. ej. por caché).
+  app.querySelectorAll('.product-visual img').forEach((img) => {
+    if (img.complete && img.naturalWidth === 0) markBrokenImage(img);
+  });
+
+  bindCatalog(render);
+  bindContact(() => Swal.fire({ icon: 'success', title: 'Consulta preparada', text: 'El envío ha sido simulado. No se ha compartido ningún dato.', confirmButtonText: 'Entendido', customClass: { popup: 'pm-swal' } }));
+  bindLogin();
+
+  if (pathChanged) {
+    updateDocumentTitle(path);
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }
+  if (justOpened) document.querySelector('#cart-close')?.focus();
+  else if (cartWasOpen && !state.cartOpen && !pathChanged) document.querySelector('#cart-toggle')?.focus();
+  else if (refocus) document.querySelector(refocus)?.focus({ preventScroll: true });
+
+  lastPath = path;
+  cartWasOpen = state.cartOpen;
 };
 
-const bindGlobal = () => {
-  document.querySelector('#theme-toggle')?.addEventListener('click', appState.toggleTheme);
-  document.querySelector('#cart-toggle')?.addEventListener('click', () => appState.toggleCart(true));
-  document.querySelector('#cart-close')?.addEventListener('click', () => appState.toggleCart(false));
-  document.querySelector('#cart-backdrop')?.addEventListener('click', () => appState.toggleCart(false));
-  document.querySelector('#cart-shop-link')?.addEventListener('click', () => appState.toggleCart(false));
-  const menuButton = document.querySelector('#mobile-menu-toggle');
-  menuButton?.addEventListener('click', () => { const nav = document.querySelector('#mobile-nav'); const open = nav.classList.toggle('is-open'); menuButton.setAttribute('aria-expanded', String(open)); });
-  document.querySelectorAll('[data-favorite]').forEach((button) => button.addEventListener('click', () => appState.toggleFavorite(button.dataset.favorite)));
-  document.querySelectorAll('[data-add-cart]').forEach((button) => button.addEventListener('click', () => appState.addToCart(button.dataset.addCart)));
-  document.querySelectorAll('[data-remove-cart]').forEach((button) => button.addEventListener('click', () => appState.removeFromCart(button.dataset.removeCart)));
-  document.querySelectorAll('[data-quantity]').forEach((button) => button.addEventListener('click', () => { const line = appState.get().cart.find((item) => item.id === button.dataset.quantity); appState.setQuantity(button.dataset.quantity, line.quantity + Number(button.dataset.delta)); }));
-  document.querySelector('#clear-cart')?.addEventListener('click', async () => { const result = await Swal.fire({ title: '¿Vaciar el carrito?', text: 'Se eliminarán todos los productos.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, vaciar', cancelButtonText: 'Cancelar' }); if (result.isConfirmed) appState.clearCart(); });
-  document.querySelector('#checkout-button')?.addEventListener('click', async () => { await Swal.fire({ icon: 'success', title: '¡Pedido simulado!', text: 'Gracias por probar PalaMarket. No se ha realizado ningún pago.', confirmButtonText: 'Volver a la tienda' }); appState.clearCart(); appState.toggleCart(false); router.navigate('/'); });
+const confirmClear = async () => {
+  const result = await Swal.fire({
+    title: '¿Vaciar el carrito?',
+    text: 'Se eliminarán todos los productos.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, vaciar',
+    cancelButtonText: 'Cancelar',
+    customClass: { popup: 'pm-swal' },
+  });
+  if (result.isConfirmed) appState.clearCart();
 };
 
-document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && appState.get().cartOpen) appState.toggleCart(false); });
+const checkout = async () => {
+  const { total } = cartTotals(cartLines(appState.get().cart));
+  await Swal.fire({
+    icon: 'success',
+    title: '¡Pedido simulado!',
+    text: `Gracias por probar PalaMarket. Total del pedido: ${total.toFixed(2).replace('.', ',')} €. No se ha realizado ningún pago.`,
+    confirmButtonText: 'Volver a la tienda',
+    customClass: { popup: 'pm-swal' },
+  });
+  appState.clearCart();
+  appState.toggleCart(false);
+  router.navigate('/');
+};
+
+const actions = {
+  'toggle-theme': () => appState.toggleTheme(),
+  'toggle-menu': () => { menuOpen = !menuOpen; render(); },
+  'open-cart': () => appState.toggleCart(true),
+  'close-cart': () => appState.toggleCart(false),
+  'toggle-favorite': ({ id }) => appState.toggleFavorite(id),
+  'add-to-cart': ({ id }) => appState.addToCart(id),
+  'remove-from-cart': ({ id }) => appState.removeFromCart(id),
+  'change-quantity': ({ id, delta }) => {
+    const line = appState.get().cart.find((item) => item.id === id);
+    if (line) appState.setQuantity(id, line.quantity + Number(delta));
+  },
+  'clear-cart': confirmClear,
+  checkout,
+};
+
+document.addEventListener('error', (event) => {
+  if (event.target.tagName === 'IMG') markBrokenImage(event.target);
+}, true);
+
+document.addEventListener('click', (event) => {
+  const target = event.target.closest('[data-action]');
+  if (target) actions[target.dataset.action]?.(target.dataset);
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.key !== 'Escape') return;
+  if (appState.get().cartOpen) appState.toggleCart(false);
+  else if (menuOpen) { menuOpen = false; render(); }
+});
+
 appState.subscribe(render);
 router.start(render);
-
-window.__PALAMARKET__ = { appState, products };

@@ -4,28 +4,31 @@ PalaMarket es una tienda y catálogo interactivo de palas de pádel desarrollado
 
 **Aplicación desplegada:** [https://palamarket.vercel.app](https://palamarket.vercel.app)
 
+**Repositorio:** [https://github.com/erikpm14/PalaMarket](https://github.com/erikpm14/PalaMarket)
+
 ## Objetivo
 
 El proyecto reúne en una única aplicación frontend los conceptos trabajados durante el máster: HTML semántico, CSS responsive, JavaScript moderno, componentización, gestión de estado, persistencia local y despliegue. Los datos de partida se han adaptado de `ProyectoPalas`, mientras que la organización de catálogo, favoritos y detalle toma como referencia patrones aprendidos en `Pokemon-kanto`.
 
 ## Funcionalidades
 
-- Inicio con presentación, selección destacada y guía visual sobre formas de pala.
+- Inicio con presentación, sección de ofertas, selección destacada y guía visual sobre formas de pala.
 - Catálogo local de 30 palas reales de Adidas, Babolat, Bullpadel, Head, Nox y StarVie.
 - Búsqueda por nombre o marca.
-- Filtros combinables por marca, forma, nivel y rango de precio.
-- Ordenación por precio, nombre y valoración.
-- Contador de resultados y estado vacío.
+- Filtros combinables por marca, forma, nivel, tipo de juego y rango de precio.
+- Ordenación por destacadas, precio, valoración y nombre.
+- Dos palas en oferta, con precio anterior y porcentaje de descuento.
+- Contador de resultados y estado sin resultados con botón para limpiar filtros.
 - Vista de detalle con especificaciones, disponibilidad y modelos relacionados.
 - Favoritos persistentes con zona protegida visualmente.
-- Carrito lateral con cantidades, subtotales, envío y total.
+- Carrito lateral con cantidades limitadas por stock, subtotal, envío (gratis desde 300 €) y total.
 - Confirmación de compra simulada con SweetAlert2.
 - Login y logout simulados.
 - Tema claro y oscuro persistente.
 - Directorio responsive de tiendas físicas.
 - Formulario de contacto con validación en frontend y envío simulado.
 - Navegación responsive y menú móvil.
-- Estados de foco, vacío, agotado y error de formulario.
+- Estados de foco, hover, vacío, agotado, «quedan pocas unidades», error de formulario y página 404.
 
 ## Tecnologías
 
@@ -38,7 +41,7 @@ El proyecto reúne en una única aplicación frontend los conceptos trabajados d
 - ESLint
 - Vercel
 
-No se utiliza React, Redux ni backend. Las fichas muestran fotografías de producto enlazadas desde catálogos oficiales y distribuidores, con fallback CSS preparado para futuras referencias.
+No se utiliza React, Redux ni backend. Las fichas muestran fotografías de producto enlazadas desde páginas oficiales y distribuidores (ver [Fuentes de imágenes](#fuentes-de-imágenes)); si una imagen falta o no carga se muestra una ilustración neutra de la pala.
 
 ## Estructura
 
@@ -62,13 +65,17 @@ src/
 │   ├── reset.css
 │   ├── global.css
 │   ├── layout.css
-│   └── components.css
+│   ├── components.css
+│   └── pages.css
+├── utils/
+│   └── format.js
 ├── views/
 │   ├── catalog.js
 │   ├── contact.js
 │   ├── favorites.js
 │   ├── home.js
 │   ├── login.js
+│   ├── notFound.js
 │   ├── product.js
 │   └── stores.js
 ├── main.js
@@ -103,7 +110,7 @@ Desde el catálogo se pueden combinar todos los filtros y abrir la ficha de cual
 
 ### Persistencia
 
-`storage.js` centraliza el acceso a localStorage con el prefijo `palamarket:`. Se conservan:
+`storage.js` centraliza el acceso a `localStorage` con el prefijo `palamarket:` (claves `favorites`, `cart`, `user` y `theme`). Los datos solo viven en el navegador del usuario: no se envían a ningún servidor. Al cargarlos se validan y se descartan los modelos que ya no existen o las cantidades superiores al stock. Si el navegador bloquea el almacenamiento, la aplicación sigue funcionando sin persistencia. Se conservan:
 
 - productos favoritos;
 - contenido del carrito;
@@ -135,7 +142,7 @@ La carpeta local `.vercel` está excluida de Git y no se requiere ninguna variab
 - **Hash router:** permite rutas propias para el detalle sin depender de configuración de servidor durante el desarrollo.
 - **Estado observable centralizado:** `appState.js` coordina carrito, favoritos, usuario y tema, y notifica a la interfaz después de cada cambio.
 - **Datos locales separados:** el catálogo y las tiendas viven en módulos independientes y pueden sustituirse por una API en el futuro.
-- **Fotografías de producto:** el catálogo usa imágenes reales de las páginas de Adidas, Head, StarVie, Babolat, NOX y Paleteros.es; se mantienen las fuentes en los datos para documentar su procedencia.
+- **Fotografías de producto:** cada modelo enlaza su fotografía real (`image`) y la página de procedencia (`imageSource`) en `src/data/products.js`; no se emparejan fotos con modelos distintos.
 - **Diseño accesible:** landmarks semánticos, etiquetas visibles, navegación por teclado, foco perceptible, botones con nombre accesible y respeto por `prefers-reduced-motion`.
 
 ## Mejoras futuras
@@ -154,4 +161,10 @@ Erik Portillo Modrego
 
 ## Fuentes de imágenes
 
-Las fotografías se utilizan únicamente para presentar modelos reales en este proyecto académico sin venta ni uso comercial. Proceden de las páginas de producto de [Adidas](https://www.adidas.es/pala-de-padel-metalbone-2026/KL2612.html), [Head](https://www.head.com/es_ES/product/extreme-pro-2025-223125), [StarVie](https://starvie.com/products/pala-metheora), [Babolat](https://www.babolat.com/es/padel-technical-collection-2026.html), [NOX](https://noxsport.com/products/pala-at10-genius-18k-alum-2026-by-agustin-tapia) y [Paleteros.es](https://paleteros.es/padel/pala-bullpadel-hack-03-2024/).
+Las fotografías se utilizan **exclusivamente con finalidad académica y no comercial**, para mostrar modelos reales en esta demostración sin ventas. No se reivindica licencia comercial alguna sobre ellas: pertenecen a sus respectivos titulares. La procedencia exacta de cada imagen está en el campo `imageSource` de cada producto en `src/data/products.js`. Las fuentes son:
+
+- [Babolat](https://www.babolat.com/us/padel/racquets.html): los 13 modelos Babolat.
+- [NOX](https://www.noxsport.com/): AT10 Genius 18K Alum (2025 y 2026) y AT10 Genius 12K.
+- [StarVie](https://starvie.com/): Metheora+.
+- [Adidas](https://www.adidas.es/pala-de-padel-metalbone-2026/KL2612.html): Metalbone 2026.
+- Distribuidores: [Padel Market](https://padelmarket.com/) (Head y Bullpadel Hack 03), [Paleteros.es](https://paleteros.es/) (Head Extreme Motion), [MegaPadelStore](https://www.megapadel.store/) y [Sur Sports](https://sursports.cl/) (NOX ML10), [Padelvice](https://www.padelvice.com/) (StarVie Triton Pro) y [Padel Island](https://www.padel-island.com/) (StarVie Astrum Eris).

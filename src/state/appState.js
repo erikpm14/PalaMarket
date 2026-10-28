@@ -1,10 +1,34 @@
+import { products } from '../data/products.js';
 import { storage } from '../services/storage.js';
 
 const listeners = new Set();
+const productIds = new Set(products.map((product) => product.id));
+const stockOf = (id) => products.find((product) => product.id === id)?.stock ?? 0;
+
+/** Descarta datos corruptos o de modelos que ya no existen en el catálogo. */
+const loadFavorites = () => {
+  const saved = storage.get('favorites', []);
+  return Array.isArray(saved) ? saved.filter((id) => productIds.has(id)) : [];
+};
+
+const loadCart = () => {
+  const saved = storage.get('cart', []);
+  if (!Array.isArray(saved)) return [];
+  return saved
+    .filter((line) => productIds.has(line?.id) && Number.isInteger(line.quantity) && line.quantity > 0)
+    .map((line) => ({ id: line.id, quantity: Math.min(line.quantity, stockOf(line.id)) }))
+    .filter((line) => line.quantity > 0);
+};
+
+const loadUser = () => {
+  const saved = storage.get('user', null);
+  return saved && typeof saved.name === 'string' && typeof saved.email === 'string' ? saved : null;
+};
+
 const state = {
-  favorites: storage.get('favorites', []),
-  cart: storage.get('cart', []),
-  user: storage.get('user', null),
+  favorites: loadFavorites(),
+  cart: loadCart(),
+  user: loadUser(),
   theme: storage.get('theme', matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
   cartOpen: false,
 };
@@ -16,32 +40,63 @@ const persist = () => {
   storage.set('user', state.user);
   storage.set('theme', state.theme);
 };
+const commit = () => {
+  persist();
+  notify();
+};
 
 export const appState = {
   get: () => ({ ...state }),
-  subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); },
-  isFavorite(id) { return state.favorites.includes(id); },
+  subscribe(listener) {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  },
+  isFavorite: (id) => state.favorites.includes(id),
   toggleFavorite(id) {
     state.favorites = state.favorites.includes(id)
       ? state.favorites.filter((item) => item !== id)
       : [...state.favorites, id];
-    persist(); notify();
+    commit();
   },
   addToCart(id) {
     const line = state.cart.find((item) => item.id === id);
+    const quantity = (line?.quantity ?? 0) + 1;
+    if (quantity > stockOf(id)) return;
     state.cart = line
-      ? state.cart.map((item) => item.id === id ? { ...item, quantity: item.quantity + 1 } : item)
-      : [...state.cart, { id, quantity: 1 }];
-    state.cartOpen = true; persist(); notify();
+      ? state.cart.map((item) => (item.id === id ? { ...item, quantity } : item))
+      : [...state.cart, { id, quantity }];
+    state.cartOpen = true;
+    commit();
   },
   setQuantity(id, quantity) {
-    state.cart = quantity <= 0 ? state.cart.filter((item) => item.id !== id) : state.cart.map((item) => item.id === id ? { ...item, quantity } : item);
-    persist(); notify();
+    const capped = Math.min(quantity, stockOf(id));
+    state.cart = capped <= 0
+      ? state.cart.filter((item) => item.id !== id)
+      : state.cart.map((item) => (item.id === id ? { ...item, quantity: capped } : item));
+    commit();
   },
-  removeFromCart(id) { state.cart = state.cart.filter((item) => item.id !== id); persist(); notify(); },
-  clearCart() { state.cart = []; persist(); notify(); },
-  toggleCart(force) { state.cartOpen = typeof force === 'boolean' ? force : !state.cartOpen; notify(); },
-  login(user) { state.user = user; persist(); notify(); },
-  logout() { state.user = null; persist(); notify(); },
-  toggleTheme() { state.theme = state.theme === 'light' ? 'dark' : 'light'; persist(); notify(); },
+  removeFromCart(id) {
+    state.cart = state.cart.filter((item) => item.id !== id);
+    commit();
+  },
+  clearCart() {
+    state.cart = [];
+    commit();
+  },
+  toggleCart(force) {
+    state.cartOpen = typeof force === 'boolean' ? force : !state.cartOpen;
+    notify();
+  },
+  login(user) {
+    state.user = user;
+    commit();
+  },
+  logout() {
+    state.user = null;
+    commit();
+  },
+  toggleTheme() {
+    state.theme = state.theme === 'light' ? 'dark' : 'light';
+    commit();
+  },
 };
