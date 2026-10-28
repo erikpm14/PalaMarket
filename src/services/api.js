@@ -30,7 +30,7 @@ export class ApiError extends Error {
 
 /** True cuando el fallo es de conectividad o del servicio (no del usuario). */
 export const isConnectivityError = (error) =>
-  error instanceof ApiError && (error.status === 0 || ['SERVER_UNAVAILABLE', 'DATABASE_UNAVAILABLE'].includes(error.code));
+  error instanceof ApiError && (error.status === 0 || error.status === 503 || error.code === 'SERVER_UNAVAILABLE');
 
 const request = async (method, path, body) => {
   const controller = new AbortController();

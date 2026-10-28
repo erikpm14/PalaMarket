@@ -1,9 +1,13 @@
+import mongoose from 'mongoose';
 import { z } from 'zod';
+import { User } from '../models/User.js';
 import { AppError } from '../utils/AppError.js';
 import { isKnownProduct, stockOf } from '../utils/catalog.js';
 
 const MAX_LINES = 100;
 const MAX_QUANTITY = 99;
+// Los operadores de estas consultas son propios, no vienen del cliente: se marcan como de confianza.
+const { trusted } = mongoose;
 
 const quantity = z
   .number({ error: 'La cantidad debe ser un número.' })
@@ -18,11 +22,46 @@ export const mergeCartSchema = z.object({
     .max(MAX_LINES),
 });
 
-const view = (user) => ({ cart: user.cart.map((line) => ({ productId: line.productId, quantity: line.quantity })) });
+const readCart = async (userId) => {
+  const user = await User.findById(userId).select('cart');
+  return { cart: user.cart.map((line) => ({ productId: line.productId, quantity: line.quantity })) };
+};
 
-// Todas las operaciones se aplican sobre req.user: el carrito de otra persona es inaccesible.
+/**
+ * Todas las escrituras son operaciones atómicas de MongoDB sobre una línea concreta,
+ * nunca «leer el carrito, modificarlo y guardarlo entero»: dos pestañas, dispositivos
+ * o instancias que cambian productos distintos a la vez no se pisan entre sí.
+ */
+const setLine = async (userId, productId, amount) => {
+  // La línea ya existe: se fija su cantidad.
+  const updated = await User.updateOne({ _id: userId, 'cart.productId': productId }, { $set: { 'cart.$.quantity': amount } });
+  if (updated.matchedCount) return true;
+  // No existe: se añade solo si sigue sin existir y queda hueco.
+  const pushed = await User.updateOne(
+    { _id: userId, 'cart.productId': trusted({ $ne: productId }), [`cart.${MAX_LINES - 1}`]: trusted({ $exists: false }) },
+    { $push: { cart: { productId, quantity: amount } } },
+  );
+  return pushed.matchedCount > 0;
+};
+
+/** Sube la cantidad de una línea hasta `amount` si es menor (nunca la reduce): idempotente. */
+const raiseLine = async (userId, productId, amount) => {
+  const raised = await User.updateOne(
+    { _id: userId, cart: trusted({ $elemMatch: { productId, quantity: { $lt: amount } } }) },
+    { $set: { 'cart.$.quantity': amount } },
+  );
+  if (raised.matchedCount) return;
+  await User.updateOne(
+    { _id: userId, 'cart.productId': trusted({ $ne: productId }), [`cart.${MAX_LINES - 1}`]: trusted({ $exists: false }) },
+    { $push: { cart: { productId, quantity: amount } } },
+  );
+};
+
+// Todas las operaciones se aplican sobre req.user._id: el carrito de otra persona es inaccesible.
 export const cartController = {
-  list: (req, res) => res.json(view(req.user)),
+  async list(req, res) {
+    res.json(await readCart(req.user._id));
+  },
 
   async setQuantity(req, res) {
     const { productId } = req.valid.params;
@@ -32,41 +71,38 @@ export const cartController = {
       throw new AppError(422, 'QUANTITY_EXCEEDS_STOCK', `Solo quedan ${stockOf(productId)} unidades de esa pala.`);
     }
 
-    const lines = req.user.cart.filter((line) => line.productId !== productId);
-    if (wanted > 0) {
-      if (lines.length >= MAX_LINES) throw new AppError(422, 'CART_FULL', 'El carrito no admite más productos distintos.');
-      lines.push({ productId, quantity: wanted });
+    if (wanted === 0) {
+      await User.updateOne({ _id: req.user._id }, { $pull: { cart: { productId } } });
+    } else if (!(await setLine(req.user._id, productId, wanted)) && !(await setLine(req.user._id, productId, wanted))) {
+      // El segundo intento cubre la carrera «otra petición acaba de añadir esta línea».
+      throw new AppError(422, 'CART_FULL', 'El carrito no admite más productos distintos.');
     }
-    req.user.cart = lines;
-    await req.user.save();
-    res.json(view(req.user));
+    res.json(await readCart(req.user._id));
   },
 
   async remove(req, res) {
-    req.user.cart = req.user.cart.filter((line) => line.productId !== req.valid.params.productId);
-    await req.user.save();
-    res.json(view(req.user));
+    await User.updateOne({ _id: req.user._id }, { $pull: { cart: { productId: req.valid.params.productId } } });
+    res.json(await readCart(req.user._id));
   },
 
   async clear(req, res) {
-    req.user.cart = [];
-    await req.user.save();
-    res.json(view(req.user));
+    await User.updateOne({ _id: req.user._id }, { $set: { cart: [] } });
+    res.json(await readCart(req.user._id));
   },
 
-  /** Suma el carrito anónimo al del usuario respetando el stock de cada pala. */
+  /**
+   * Incorpora el carrito guardado como anónimo conservando la mayor cantidad de cada pala
+   * (respetando el stock). Es idempotente: repetir la misma fusión, por ejemplo tras perder
+   * la respuesta, deja el carrito exactamente igual.
+   */
   async merge(req, res) {
-    const lines = new Map(req.user.cart.map((line) => [line.productId, line.quantity]));
+    const wanted = new Map();
     for (const item of req.valid.body.items) {
       if (!isKnownProduct(item.productId)) continue;
-      const total = (lines.get(item.productId) ?? 0) + item.quantity;
-      lines.set(item.productId, Math.min(total, stockOf(item.productId), MAX_QUANTITY));
+      const amount = Math.min(item.quantity, stockOf(item.productId), MAX_QUANTITY);
+      if (amount > 0) wanted.set(item.productId, Math.max(wanted.get(item.productId) ?? 0, amount));
     }
-    req.user.cart = [...lines]
-      .filter(([, amount]) => amount > 0)
-      .slice(0, MAX_LINES)
-      .map(([productId, amount]) => ({ productId, quantity: amount }));
-    await req.user.save();
-    res.json(view(req.user));
+    for (const [productId, amount] of wanted) await raiseLine(req.user._id, productId, amount);
+    res.json(await readCart(req.user._id));
   },
 };

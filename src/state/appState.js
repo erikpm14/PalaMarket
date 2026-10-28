@@ -126,9 +126,10 @@ const startSession = async (user) => {
   try {
     if (anonymous.favorites.length) await api.mergeFavorites(anonymous.favorites);
     if (anonymous.cart.length) await api.mergeCart(anonymous.cart.map(({ id, quantity }) => ({ productId: id, quantity })));
-    await loadPrivateData();
+    // Ya están en la cuenta (la fusión es idempotente): se borra la copia local antes de descargar los datos.
     storage.remove('favorites');
     storage.remove('cart');
+    await loadPrivateData();
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
       handleFailure(error);

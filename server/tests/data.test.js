@@ -71,6 +71,58 @@ describe('carrito', () => {
   });
 });
 
+describe('carrito: concurrencia e idempotencia', () => {
+  const byId = (cart) => Object.fromEntries(cart.map((l) => [l.productId, l.quantity]));
+
+  it('la fusión es idempotente: repetirla (p. ej. tras perder la respuesta) no duplica cantidades', async () => {
+    const { client } = await loggedClient(ctx);
+    const items = [{ productId: 'air-viper-26', quantity: 2 }, { productId: 'coello-pro', quantity: 1 }];
+    const first = (await client.post('/api/cart/merge').send({ items })).body.cart;
+    const second = (await client.post('/api/cart/merge').send({ items })).body.cart;
+    const third = (await client.post('/api/cart/merge').send({ items })).body.cart;
+    assert.deepEqual(byId(first), { 'air-viper-26': 2, 'coello-pro': 1 });
+    assert.deepEqual(byId(second), byId(first));
+    assert.deepEqual(byId(third), byId(first));
+  });
+
+  it('la fusión conserva la mayor cantidad y nunca reduce la que ya hay en la cuenta', async () => {
+    const { client } = await loggedClient(ctx);
+    await client.put('/api/cart/air-viper-26').send({ quantity: 4 });
+    const res = await client.post('/api/cart/merge').send({ items: [{ productId: 'air-viper-26', quantity: 1 }, { productId: 'air-viper-26', quantity: 2 }] });
+    assert.deepEqual(res.body.cart, [{ productId: 'air-viper-26', quantity: 4 }]);
+  });
+
+  it('peticiones simultáneas sobre productos distintos no se pisan (operaciones atómicas)', async () => {
+    const { client } = await loggedClient(ctx);
+    const ids = ['air-viper-26', 'air-veron-26', 'air-vertuo-26', 'counter-viper-26', 'counter-veron-26', 'counter-vertuo-26', 'technical-origin-plus', 'hack-03-2024'];
+    const results = await Promise.all(ids.map((id) => client.put(`/api/cart/${id}`).send({ quantity: 1 })));
+    assert.ok(results.every((r) => r.status === 200));
+    const cart = (await client.get('/api/cart')).body.cart;
+    assert.deepEqual(cart.map((l) => l.productId).sort(), [...ids].sort());
+  });
+
+  it('peticiones simultáneas sobre el mismo producto no crean líneas duplicadas', async () => {
+    const { client } = await loggedClient(ctx);
+    const results = await Promise.all([1, 2, 1, 2, 1, 2].map((quantity) => client.put('/api/cart/air-viper-26').send({ quantity })));
+    assert.ok(results.every((r) => r.status === 200));
+    const cart = (await client.get('/api/cart')).body.cart;
+    assert.equal(cart.length, 1);
+    assert.ok([1, 2].includes(cart[0].quantity));
+  });
+
+  it('fusiones y cambios simultáneos (varias pestañas) conservan todo', async () => {
+    const { client } = await loggedClient(ctx);
+    await Promise.all([
+      client.post('/api/cart/merge').send({ items: [{ productId: 'air-viper-26', quantity: 2 }] }),
+      client.post('/api/cart/merge').send({ items: [{ productId: 'air-veron-26', quantity: 3 }] }),
+      client.put('/api/favorites/coello-pro'),
+      client.put('/api/cart/air-vertuo-26').send({ quantity: 1 }),
+    ]);
+    assert.deepEqual(byId((await client.get('/api/cart')).body.cart), { 'air-viper-26': 2, 'air-veron-26': 3, 'air-vertuo-26': 1 });
+    assert.deepEqual((await client.get('/api/favorites')).body.favorites, ['coello-pro']);
+  });
+});
+
 describe('separación entre usuarios y persistencia', () => {
   it('cada usuario solo ve y modifica lo suyo', async () => {
     const a = await loggedClient(ctx);

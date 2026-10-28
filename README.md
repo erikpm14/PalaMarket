@@ -170,14 +170,15 @@ Todas las respuestas son JSON. Los errores siguen siempre el formato `{ "error":
 | `PUT /api/cart/:productId` | Privado | Fija la cantidad (`quantity`; 0 elimina la línea; máximo el stock). |
 | `DELETE /api/cart/:productId` | Privado | Elimina una línea. |
 | `DELETE /api/cart` | Privado | Vacía el carrito. |
-| `POST /api/cart/merge` | Privado | Suma el carrito anónimo respetando el stock (`items`). |
-| `GET /api/health` | Público | Estado del servicio y de la base de datos. |
+| `POST /api/cart/merge` | Privado | Incorpora el carrito anónimo (`items`) conservando la mayor cantidad de cada pala y respetando el stock. Es idempotente: repetirlo no duplica nada. |
+| `GET /api/health` | Público | Estado real del servicio: hace un `ping` a MongoDB y responde 503 si no contesta. |
 
 ## Autenticación y seguridad
 
-- **Contraseñas:** se cifran con bcrypt (12 rondas); solo se guarda el hash, que nunca se devuelve. Mínimo 8 y máximo 72 caracteres.
+- **Contraseñas:** se cifran con bcrypt (12 rondas); solo se guarda el hash, que nunca se devuelve. Mínimo 8 caracteres y máximo 72 **bytes** (bcrypt solo usa los primeros 72 bytes; las letras con tilde y los símbolos ocupan más de uno).
 - **Sesión:** JWT con caducidad (7 días) guardado en una cookie `httpOnly`, `Secure` en producción y `SameSite=Lax`. El código del navegador nunca ve el token. Una segunda cookie sin datos (`pm_auth=1`) solo indica al frontend que puede haber sesión para evitar consultas innecesarias.
 - **Cierre de sesión real:** además de borrar la cookie, se incrementa una versión de sesión en el usuario, de modo que un token copiado antes del cierre deja de ser válido.
+- **Concurrencia:** las escrituras del carrito y de los favoritos son operaciones atómicas de MongoDB sobre una línea concreta, no «leer, modificar y guardar entero»: varias pestañas, dispositivos o instancias serverless no se pisan entre sí. La fusión del carrito anónimo es idempotente.
 - **Validación:** todas las entradas se validan con Zod; el email se normaliza y se rechazan operadores de MongoDB (`$ne`, etc.) como forma de inyección.
 - **Separación de usuarios:** todas las operaciones privadas se aplican siempre sobre el usuario de la sesión; el servidor ignora cualquier identificador de usuario enviado en la petición.
 - **Cabeceras y orígenes:** Helmet, CORS limitado a `CORS_ORIGINS` con credenciales y comprobación del origen en las peticiones que modifican datos (defensa frente a CSRF).
@@ -188,7 +189,7 @@ Todas las respuestas son JSON. Los errores siguen siempre el formato `{ "error":
 ## Persistencia y `localStorage`
 
 - **Con sesión:** favoritos y carrito se guardan en MongoDB, asociados al usuario. En el navegador no se guarda ninguna contraseña, token ni dato de usuario.
-- **Sin sesión:** favoritos y carrito se guardan en `localStorage` (claves `palamarket:favorites` y `palamarket:cart`) para que la tienda funcione sin cuenta. Al iniciar sesión se añaden a la cuenta y se borran del dispositivo. Al cerrar sesión se limpia el estado privado de la pantalla sin borrar los datos del servidor.
+- **Sin sesión:** favoritos y carrito se guardan en `localStorage` (claves `palamarket:favorites` y `palamarket:cart`) para que la tienda funcione sin cuenta. Al iniciar sesión se añaden a la cuenta (conservando la mayor cantidad de cada pala) y se borran del dispositivo; la fusión es idempotente, así que repetirla tras un fallo de red no duplica nada. Al cerrar sesión se limpia el estado privado de la pantalla sin borrar los datos del servidor.
 - **Preferencias:** el tema (`palamarket:theme`) se guarda siempre en `localStorage`.
 - Al cargar los datos locales se validan: se descartan modelos que ya no existen y cantidades superiores al stock. Si el navegador bloquea el almacenamiento, la aplicación sigue funcionando sin persistencia.
 - Los cambios del usuario con sesión se muestran al instante y se envían al servidor en orden; si el servidor los rechaza o no responde, se restaura el último estado confirmado y se avisa.
@@ -203,9 +204,9 @@ El proceso de compra no procesa pagos ni transmite datos de pago. El formulario 
 npm run server:test
 ```
 
-Las 52 pruebas de la API usan una base de datos MongoDB en memoria y cubren: registro correcto, duplicado y datos inválidos; login correcto e incorrecto; inyección de operadores; cierre de sesión e invalidación del token; tokens caducados, manipulados o sin firma; favoritos y carrito (stock, cantidades, fusión); separación de datos entre usuarios; persistencia entre sesiones; CORS, comprobación de origen, cabeceras de seguridad, límite de intentos y formato de errores; configuración de producción y base de datos no disponible.
+Las 61 pruebas de la API usan una base de datos MongoDB en memoria y cubren: registro correcto, duplicado y datos inválidos; login correcto e incorrecto; inyección de operadores; cierre de sesión e invalidación del token; tokens caducados, manipulados o sin firma; favoritos y carrito (stock, cantidades, fusión); separación de datos entre usuarios; persistencia entre sesiones; CORS, comprobación de origen, cabeceras de seguridad, límite de intentos y formato de errores; configuración de producción y base de datos no disponible.
 
-Además hay un grupo de pruebas **de producción** (cookies `Secure`, CORS limitado al dominio real, defensa CSRF, HSTS y Helmet, límite de intentos detrás de un proxy que no se puede saltar añadiendo IPs falsas, y ausencia de contraseñas, hashes, tokens y variables privadas en cualquier respuesta) y otro **serverless**: varias instancias independientes que solo comparten la base de datos, para comprobar que las sesiones no dependen de la memoria y que el cierre de sesión invalida el token en todas ellas.
+Además hay un grupo de pruebas **de producción** (cookies `Secure`, CORS limitado al dominio real, defensa CSRF, HSTS y Helmet, límite de intentos detrás de un proxy que no se puede saltar añadiendo IPs falsas, y ausencia de contraseñas, hashes, tokens y variables privadas en cualquier respuesta) y otro **serverless**: varias instancias independientes que solo comparten la base de datos, para comprobar que las sesiones no dependen de la memoria y que el cierre de sesión invalida el token en todas ellas. También hay pruebas de concurrencia del carrito (peticiones simultáneas desde varias pestañas), de idempotencia de la fusión, del límite de 72 bytes de bcrypt y de la función de Vercel cuando falta configuración (responde 503 en JSON, sin nombres ni valores de variables).
 
 ## Despliegue
 
@@ -214,7 +215,7 @@ Además hay un grupo de pruebas **de producción** (cookies `Secure`, CORS limit
 3. **Variables de entorno** en el proyecto de Vercel, marcadas para *Production* y también para *Preview* si quieres probar la rama antes de fusionarla: `MONGODB_URI`, `JWT_SECRET` (valor aleatorio nuevo, distinto al de desarrollo) y `CORS_ORIGINS=https://palamarket.vercel.app`. `NODE_ENV=production` lo establece Vercel. En una vista previa la web y la API comparten dominio, así que no hace falta añadir su URL a `CORS_ORIGINS`.
 4. Despliega y comprueba `/api/health` (debe responder `{"status":"ok","database":"up"}`). Prueba después registro, inicio de sesión, favoritos, carrito y cierre de sesión.
 
-Notas: el límite de peticiones se mantiene en memoria de cada instancia de la función; para un límite global estricto habría que usar un almacén compartido (por ejemplo, Redis). La rama de trabajo no debe fusionarse en `main` hasta haber probado la API desplegada en una vista previa.
+Notas: el límite de peticiones se mantiene en memoria de cada instancia de la función, de modo que no es global; para un límite estricto habría que usar un almacén compartido (por ejemplo, Redis). El registro responde 409 si el email ya existe, lo que permite saber si una cuenta existe; es una decisión asumida en este proyecto (el login, en cambio, no lo revela). La rama de trabajo no debe fusionarse en `main` hasta haber probado la API desplegada en una vista previa.
 
 ## Decisiones técnicas
 

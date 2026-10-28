@@ -36,9 +36,21 @@ let lastPath = null;
 let cartWasOpen = false;
 let menuOpen = false;
 
+/** Una dirección con un escape inválido (por ejemplo «%») no debe romper la página: se trata como no encontrada. */
+const decode = (value) => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+};
+
 const resolveView = (path) => {
   const product = path.match(/^\/producto\/(.+)$/);
-  if (product) return productView(decodeURIComponent(product[1]));
+  if (product) {
+    const id = decode(product[1]);
+    return id === null ? notFoundView() : productView(id);
+  }
   return (views[path] ?? notFoundView)();
 };
 

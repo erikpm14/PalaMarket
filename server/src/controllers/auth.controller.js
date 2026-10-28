@@ -6,11 +6,16 @@ import { clearSessionCookie, setSessionCookie, signSession, verifySession } from
 
 const BCRYPT_ROUNDS = 12;
 
-// bcrypt solo usa los primeros 72 bytes de la contraseña.
+// bcrypt solo usa los primeros 72 BYTES de la contraseña: un límite en caracteres no basta,
+// porque una letra con tilde o un símbolo ocupan más de un byte y contraseñas distintas
+// con el mismo prefijo de 72 bytes serían equivalentes.
+const BCRYPT_MAX_BYTES = 72;
+const fitsBcrypt = (value) => Buffer.byteLength(value, 'utf8') <= BCRYPT_MAX_BYTES;
+
 const password = z
   .string({ error: 'La contraseña es obligatoria.' })
   .min(8, 'La contraseña debe tener al menos 8 caracteres.')
-  .max(72, 'La contraseña no puede superar los 72 caracteres.');
+  .refine(fitsBcrypt, `La contraseña no puede superar los ${BCRYPT_MAX_BYTES} bytes (las letras con tilde y los símbolos ocupan más de uno).`);
 
 const email = z
   .string({ error: 'El email es obligatorio.' })
@@ -31,7 +36,7 @@ export const registerSchema = z.object({
 
 export const loginSchema = z.object({
   email,
-  password: z.string({ error: 'La contraseña es obligatoria.' }).min(1, 'La contraseña es obligatoria.').max(72, 'Contraseña no válida.'),
+  password: z.string({ error: 'La contraseña es obligatoria.' }).min(1, 'La contraseña es obligatoria.').refine(fitsBcrypt, 'Contraseña no válida.'),
 });
 
 // Hash ficticio: se compara aunque el email no exista, para que el tiempo de respuesta no delate qué cuentas existen.

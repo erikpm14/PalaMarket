@@ -75,6 +75,31 @@ describe('registro', () => {
   }
 });
 
+describe('contraseñas y bcrypt (límite de 72 bytes)', () => {
+  it('rechaza contraseñas que superan 72 BYTES aunque tengan menos de 72 caracteres', async () => {
+    const tooLong = 'ñ'.repeat(40); // 40 caracteres = 80 bytes
+    assert.ok(tooLong.length < 72 && Buffer.byteLength(tooLong) > 72);
+    const res = await ctx.plain().post('/api/auth/register').send({ ...newUser(), password: tooLong });
+    assert.equal(res.status, 400);
+    assert.match(res.body.error.details[0].message, /72 bytes/);
+  });
+
+  it('admite exactamente 72 bytes (con caracteres multibyte) y distingue contraseñas distintas', async () => {
+    const user = newUser();
+    const password = 'ñ'.repeat(36); // 72 bytes exactos
+    assert.equal(Buffer.byteLength(password), 72);
+    assert.equal((await ctx.plain().post('/api/auth/register').send({ ...user, password })).status, 201);
+    assert.equal((await ctx.plain().post('/api/auth/login').send({ email: user.email, password })).status, 200);
+    const other = await ctx.plain().post('/api/auth/login').send({ email: user.email, password: `${'ñ'.repeat(35)}nn` });
+    assert.equal(other.status, 401);
+  });
+
+  it('el login con más de 72 bytes se rechaza sin llegar a comparar', async () => {
+    const res = await ctx.plain().post('/api/auth/login').send({ email: 'a@b.co', password: 'ñ'.repeat(40) });
+    assert.equal(res.status, 400);
+  });
+});
+
 describe('login', () => {
   it('inicia sesión con credenciales correctas (sin distinguir mayúsculas en el email)', async () => {
     const data = newUser();
