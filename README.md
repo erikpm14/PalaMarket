@@ -129,7 +129,7 @@ Se definen en `server/.env` (local) o en el panel de Vercel (producción). **Nun
 | `JWT_SECRET` | Sí | Secreto para firmar la sesión (mínimo 32 caracteres aleatorios). |
 | `CORS_ORIGINS` | Sí en producción | Orígenes de la web permitidos, separados por comas (p. ej. `https://palamarket.vercel.app`). En local: `http://localhost:5173`. |
 | `PORT` | No | Puerto del servidor local (por defecto 4000). |
-| `JWT_EXPIRES_IN` | No | Duración del token: un número seguido de `s`, `m`, `h` o `d` (por defecto `7d`); el servidor no arranca con otro formato. |
+| `JWT_EXPIRES_IN` | No | Duración del token: un número seguido de la unidad `s`, `m`, `h` o `d` (por defecto `7d`); el servidor no arranca con otro formato, y un número sin unidad se rechaza porque se interpretaría como milisegundos. |
 | `COOKIE_MAX_AGE_DAYS` | No | Duración de la cookie en días (por defecto 7). |
 | `COOKIE_SAME_SITE` | No | `lax` (por defecto), `strict` o `none` (backend en otro dominio). |
 | `TRUST_PROXY` | No | Número de proxies delante de la API (por defecto 1 en producción). |
@@ -171,7 +171,7 @@ Todas las respuestas son JSON. Los errores siguen siempre el formato `{ "error":
 | `DELETE /api/cart/:productId` | Privado | Elimina una línea. |
 | `DELETE /api/cart` | Privado | Vacía el carrito. |
 | `POST /api/cart/merge` | Privado | Incorpora el carrito anónimo (`items`) conservando la mayor cantidad de cada pala y respetando el stock. Es idempotente y converge aunque haya fusiones simultáneas; si alguna pala no cabe (100 líneas distintas) responde 422 `CART_FULL` indicando cuáles. |
-| `GET /api/health` | Público | Estado real del servicio: hace un `ping` a MongoDB y responde 503 si no contesta. |
+| `GET /api/health` | Público | Estado real del servicio: hace un `ping` a MongoDB y responde 503 si no contesta. Puede tardar hasta `DB_TIMEOUT_MS` en responder si MongoDB no está disponible. |
 
 ## Autenticación y seguridad
 
@@ -204,7 +204,7 @@ El proceso de compra no procesa pagos ni transmite datos de pago. El formulario 
 npm run server:test
 ```
 
-Las 63 pruebas de la API usan una base de datos MongoDB en memoria y cubren: registro correcto, duplicado y datos inválidos; login correcto e incorrecto; inyección de operadores; cierre de sesión e invalidación del token; tokens caducados, manipulados o sin firma; favoritos y carrito (stock, cantidades, fusión); separación de datos entre usuarios; persistencia entre sesiones; CORS, comprobación de origen, cabeceras de seguridad, límite de intentos y formato de errores; configuración de producción y base de datos no disponible.
+Las 65 pruebas de la API usan una base de datos MongoDB en memoria y cubren: registro correcto, duplicado y datos inválidos; login correcto e incorrecto; inyección de operadores; cierre de sesión e invalidación del token; tokens caducados, manipulados o sin firma; favoritos y carrito (stock, cantidades, fusión); separación de datos entre usuarios; persistencia entre sesiones; CORS, comprobación de origen, cabeceras de seguridad, límite de intentos y formato de errores; configuración de producción y base de datos no disponible.
 
 Además hay un grupo de pruebas **de producción** (cookies `Secure`, CORS limitado al dominio real, defensa CSRF, HSTS y Helmet, límite de intentos detrás de un proxy que no se puede saltar añadiendo IPs falsas, y ausencia de contraseñas, hashes, tokens y variables privadas en cualquier respuesta) y otro **serverless**: varias instancias independientes que solo comparten la base de datos, para comprobar que las sesiones no dependen de la memoria y que el cierre de sesión invalida el token en todas ellas. También hay pruebas de concurrencia del carrito (peticiones simultáneas desde varias pestañas), de idempotencia y convergencia de la fusión (incluido el carrito lleno), del límite de 72 bytes de bcrypt y de la función de Vercel cuando falta configuración (responde 503 en JSON, sin nombres ni valores de variables).
 

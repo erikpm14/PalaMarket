@@ -125,7 +125,7 @@ describe('carrito: concurrencia e idempotencia', () => {
 });
 
 describe('carrito: fusiones simultáneas y carrito lleno', () => {
-  it('dos fusiones simultáneas de la misma pala convergen siempre a la mayor cantidad', async () => {
+  it('siete fusiones simultáneas de la misma pala convergen siempre a la mayor cantidad', async () => {
     for (let round = 0; round < 5; round += 1) {
       const { client } = await loggedClient(ctx);
       const quantities = [1, 5, 2, 4, 3, 5, 1];

@@ -5,6 +5,7 @@ mongoose.set('sanitizeFilter', true);
 mongoose.set('strictQuery', true);
 
 let connection = null;
+let closing = null;
 
 const DISCONNECTED = 0;
 
@@ -14,7 +15,9 @@ export const connectDb = (uri, timeoutMs = 8000) => {
   // Durante un cierre en curso (estado «disconnecting») no se abre otra: se espera a que termine.
   if (connection && mongoose.connection.readyState === DISCONNECTED) connection = null;
   if (!connection) {
-    connection = mongoose.connect(uri, { serverSelectionTimeoutMS: timeoutMs, maxPoolSize: 5 }).catch((error) => {
+    const open = () => mongoose.connect(uri, { serverSelectionTimeoutMS: timeoutMs, maxPoolSize: 5 });
+    // Si hay un cierre explícito en curso se espera a que termine antes de abrir otra conexión.
+    connection = (closing ? closing.then(open) : open()).catch((error) => {
       connection = null;
       throw error;
     });
@@ -24,5 +27,8 @@ export const connectDb = (uri, timeoutMs = 8000) => {
 
 export const disconnectDb = async () => {
   connection = null;
-  await mongoose.disconnect();
+  closing = mongoose.disconnect().finally(() => {
+    closing = null;
+  });
+  await closing;
 };

@@ -20,7 +20,7 @@ export const loadConfig = (env = process.env) => {
   if (isProduction && origins.length === 0) throw new Error('CORS_ORIGINS es obligatorio en producción (dominio real de la web).');
 
   const jwtExpiresIn = env.JWT_EXPIRES_IN ?? '7d';
-  if (!/^\d+[smhd]?$/.test(jwtExpiresIn)) throw new Error('JWT_EXPIRES_IN debe ser un número seguido de s, m, h o d (por ejemplo 7d).');
+  if (!/^[1-9]\d*[smhd]$/.test(jwtExpiresIn)) throw new Error('JWT_EXPIRES_IN debe ser un número seguido de la unidad s, m, h o d (por ejemplo 7d); sin unidad se interpretaría como milisegundos.');
 
   const sameSite = (env.COOKIE_SAME_SITE ?? 'lax').toLowerCase();
   if (!SAME_SITE_VALUES.includes(sameSite)) throw new Error('COOKIE_SAME_SITE debe ser lax, strict o none.');
